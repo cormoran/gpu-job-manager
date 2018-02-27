@@ -35,9 +35,7 @@ def get_available_gpu():
     available_gpus = list(filter(lambda id: target_gpus.count(id), available_gpus))
     for gpu in available_gpus:
         if gpu in used_gpu:
-            # TODO: remove bad hard coding
-            if time.time() - used_gpu[gpu] < 30:
-                continue
+            continue
         return gpu
     return None
 
@@ -47,7 +45,7 @@ def execute(gpu, job):
     global running_procs
     job_timestamp = job + '.' + time.strftime("%Y-%m-%d-%H-%M-%S")
     job_log = job_timestamp + '.log'
-    # TODO: find better way to handle output
+    # TODO: find better way to handle (large) output
     command = 'bash ' + make_path('running', job_timestamp) + \
               ' > ' + make_path('running', job_log)
 
@@ -55,7 +53,7 @@ def execute(gpu, job):
     p = subprocess.Popen(command, shell=True,
                          env={**os.environ, "CUDA_VISIBLE_DEVICES": str(gpu)})
     print("executed job '{}' on gpu {}".format(job, gpu))
-    subprocess.call("slack start " + job_timestamp, shell=True)
+    # subprocess.call("slack start " + job_timestamp, shell=True)
 
     running_procs.append((p, gpu, job_timestamp, job_log))
     used_gpu[gpu] = time.time()
@@ -65,11 +63,11 @@ def try_execute():
     # TODO: don't show same messages twice
     gpu = get_available_gpu()
     if gpu is None:
-        print('no available gpu')
+        print('no available gpu\r')
         return False
     job = get_next_job()
     if job is None:
-        print('no available job')
+        print('no available job\r')
         return False
     execute(gpu, job)
     return True
@@ -83,13 +81,13 @@ def check_end_procs():
         (p, gpu, job, log) = proc_info
         if p.poll() is not None:
             if p.returncode == 0:
-                print("succees job '{}' on gpu {}".format(job, gpu))
-                subprocess.call("slack end success " + job, shell=True)
+                print("\nsuccees job '{}' on gpu {}".format(job, gpu))
+                # subprocess.call("slack end success " + job, shell=True)
                 shutil.move(make_path('running', job), make_path('success', job))
                 shutil.move(make_path('running', log), make_path('success', log))
             else:
-                print("failed job '{}' on gpu {}".format(job, gpu))
-                subprocess.call("slack end fail " + job, shell=True)
+                print("\nfailed job '{}' on gpu {}".format(job, gpu))
+                # subprocess.call("slack end fail " + job, shell=True)
                 shutil.move(make_path('running', job), make_path('fail', job))
                 shutil.move(make_path('running', log), make_path('fail', log))
             finished.append(i)
